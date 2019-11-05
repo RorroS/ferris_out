@@ -16,10 +16,12 @@ struct MainState {
     ballis_pos_x: f32,
     ballis_pos_y: f32,
     ballis_speed: f32,
+    ballis_dir: f32,
     paddle_pos_x: f32,
     paddle_pos_y: f32,
     paddle_speed: f32,
     paddle_length: f32,
+    paddle_height: f32,
 }
 
 impl MainState {
@@ -28,14 +30,16 @@ impl MainState {
 
         let ballis_pos_x = 100.0;
         let ballis_pos_y = 100.0;
-        let ballis_speed = 0.5;
+        let ballis_speed = 2.5;
+        let ballis_dir = 1.0;
 
         let paddle_speed = 5.0;
         let paddle_length = 50.0;
+        let paddle_height = 10.0;
         let paddle_pos_x = graphics::size(ctx).1 / 2.0 - paddle_length / 2.0;
         let paddle_pos_y = graphics::size(ctx).1 - 50.0;
 
-        let paddle = graphics::Rect::new(0.0, 0.0, paddle_length, 10.0);
+        let paddle = graphics::Rect::new(0.0, 0.0, paddle_length, paddle_height);
 
         let s = MainState {
             ballis_img,
@@ -43,10 +47,12 @@ impl MainState {
             ballis_pos_y,
             ballis_pos_x,
             ballis_speed,
+            ballis_dir,
             paddle_pos_x,
             paddle_pos_y,
             paddle_speed,
             paddle_length,
+            paddle_height,
         };
 
         Ok(s)
@@ -55,11 +61,22 @@ impl MainState {
 
 impl event::EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
-        if self.ballis_pos_y + f32::from(self.ballis_img.height()) > graphics::size(ctx).1 - 25.0 {
+        // 26 is height of titlebar.
+        if self.ballis_pos_y + f32::from(self.ballis_img.height()) > graphics::size(ctx).1 - 26.0 {
             self.ballis_pos_y = 100.0;
-        } else {
-            self.ballis_pos_y = self.ballis_pos_y % graphics::size(ctx).1 + self.ballis_speed;
+            self.ballis_dir = 1.0;
         }
+        else if self.ballis_pos_y <= 0.0 {
+            self.ballis_dir = 1.0;
+        }
+        else if self.ballis_pos_y + f32::from(self.ballis_img.height()) > self.paddle_pos_y &&
+            self.ballis_pos_y + f32::from(self.ballis_img.height()) < self.paddle_pos_y + self.paddle_height &&
+            (self.ballis_pos_x + f32::from(self.ballis_img.width()) > self.paddle_pos_x &&
+            self.ballis_pos_x + f32::from(self.ballis_img.width()) < self.paddle_pos_x + self.paddle_length || self.ballis_pos_x > self.paddle_pos_x && self.ballis_pos_x < self.paddle_pos_x + self.paddle_length) {
+            self.ballis_dir = -1.0;
+        }
+
+        self.ballis_pos_y = self.ballis_pos_y % graphics::size(ctx).1 + self.ballis_speed * self.ballis_dir;
 
         if ggez::input::keyboard::is_key_pressed(ctx, KeyCode::Left) {
             if self.paddle_pos_x - self.paddle_speed >= 0.0 {
