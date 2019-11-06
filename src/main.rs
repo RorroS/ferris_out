@@ -21,11 +21,11 @@ struct Ball {
 }
 
 impl Ball {
-    fn new(ctx: &mut Context) -> Ball {
+    fn new(ctx: &mut Context, x: f32, y: f32) -> Ball {
         Ball {
             image: graphics::Image::new(ctx, "/ballis.png").unwrap(),
-            pos_x: 100.0,
-            pos_y: 100.0,
+            pos_x: x,
+            pos_y: y,
             speed: 2.5,
             dir_x: 1.0,
             dir_y: 0.0,
@@ -53,7 +53,13 @@ impl MainState {
 
         let paddle = graphics::Rect::new(0.0, 0.0, paddle_length, paddle_height);
 
-        let balls = vec![Ball::new(ctx)];
+        let balls = vec![
+            Ball::new(ctx, 100.0, 100.0),
+            Ball::new(ctx, 200.0, 200.0),
+            Ball::new(ctx, 300.0, 300.0),
+            Ball::new(ctx, 400.0, 400.0),
+            Ball::new(ctx, 500.0, 500.0),
+        ];
 
         let s = MainState {
             paddle,
@@ -71,22 +77,25 @@ impl MainState {
 
 impl event::EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
-        // 26 is height of titlebar.
-//        if self.ballis_pos_y + f32::from(self.ballis_img.height()) > graphics::size(ctx).1 - 26.0 {
-//            self.ballis_pos_y = 100.0;
-//            self.ballis_x_dir = 1.0;
-//        }
-//        else if self.ballis_pos_y <= 0.0 {
-//            self.ballis_x_dir = 1.0;
-//        }
-//        else if self.ballis_pos_y + f32::from(self.ballis_img.height()) > self.paddle_pos_y &&
-//            self.ballis_pos_y + f32::from(self.ballis_img.height()) < self.paddle_pos_y + self.paddle_height &&
-//            (self.ballis_pos_x + f32::from(self.ballis_img.width()) > self.paddle_pos_x &&
-//            self.ballis_pos_x + f32::from(self.ballis_img.width()) < self.paddle_pos_x + self.paddle_length || self.ballis_pos_x > self.paddle_pos_x && self.ballis_pos_x < self.paddle_pos_x + self.paddle_length) {
-//            self.ballis_x_dir = -1.0;
-//        }
-//
-//        self.ballis_pos_y = self.ballis_pos_y % graphics::size(ctx).1 + self.ballis_speed * self.ballis_x_dir;
+        for i in 0..self.balls.len() {
+            if self.balls[i].pos_y + f32::from(self.balls[i].image.height()) > WINDOW_SIZE.1 {
+                // TODO: Remove ball when it reaches the bottom of the window
+                self.balls[i].pos_y = 100.0;
+                self.balls[i].dir_x = 1.0;
+            } else if self.balls[i].pos_y <= 0.0 {
+                // Changes direction downwards
+                self.balls[i].dir_x = 1.0;
+            } else if self.balls[i].pos_y + f32::from(self.balls[i].image.height()) > self.paddle_pos_y &&
+                self.balls[i].pos_y + f32::from(self.balls[i].image.height()) < self.paddle_pos_y + self.paddle_height &&
+                (self.balls[i].pos_x + f32::from(self.balls[i].image.width()) > self.paddle_pos_x &&
+                 self.balls[i].pos_x + f32::from(self.balls[i].image.width()) < self.paddle_pos_x + self.paddle_length ||
+                 self.balls[i].pos_x > self.paddle_pos_x && self.balls[i].pos_x < self.paddle_pos_x + self.paddle_length) {
+                self.balls[i].dir_x = -1.0;
+            }
+
+            self.balls[i].pos_y = self.balls[i].pos_y % graphics::size(ctx).1 + self.balls[i].speed * self.balls[i].dir_x;
+
+        }
 
         if ggez::input::keyboard::is_key_pressed(ctx, KeyCode::Left) {
             if self.paddle_pos_x - self.paddle_speed >= 0.0 {
@@ -106,7 +115,7 @@ impl event::EventHandler for MainState {
         graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
 
         for ball in &self.balls {
-            graphics::draw(ctx, &ball.image, (Point2::new(ball.pos_x, ball.pos_y),));
+            graphics::draw(ctx, &ball.image, (Point2::new(ball.pos_x, ball.pos_y),))?;
         }
 
        // let balls_to_the_walls = Ball::new(ctx);
