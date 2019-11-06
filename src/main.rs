@@ -18,6 +18,7 @@ struct Ball {
     speed: f32,
     dir_x: f32,
     dir_y: f32,
+    reached_bottom: bool,
 }
 
 impl Ball {
@@ -29,6 +30,7 @@ impl Ball {
             speed: 2.5,
             dir_x: 1.0,
             dir_y: 0.0,
+            reached_bottom: false,
         }
     }
 }
@@ -77,11 +79,11 @@ impl MainState {
 
 impl event::EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
+        self.balls.retain(|ball| !ball.reached_bottom);
+
         for i in 0..self.balls.len() {
             if self.balls[i].pos_y + f32::from(self.balls[i].image.height()) > WINDOW_SIZE.1 {
-                // TODO: Remove ball when it reaches the bottom of the window
-                self.balls[i].pos_y = 100.0;
-                self.balls[i].dir_x = 1.0;
+                self.balls[i].reached_bottom = true;
             } else if self.balls[i].pos_y <= 0.0 {
                 // Changes direction downwards
                 self.balls[i].dir_x = 1.0;
@@ -94,6 +96,7 @@ impl event::EventHandler for MainState {
             }
 
             self.balls[i].pos_y = self.balls[i].pos_y % graphics::size(ctx).1 + self.balls[i].speed * self.balls[i].dir_x;
+
 
         }
 
@@ -117,11 +120,6 @@ impl event::EventHandler for MainState {
         for ball in &self.balls {
             graphics::draw(ctx, &ball.image, (Point2::new(ball.pos_x, ball.pos_y),))?;
         }
-
-       // let balls_to_the_walls = Ball::new(ctx);
-       // graphics::draw(ctx, &balls_to_the_walls.image,
-       //                (Point2::new(balls_to_the_walls.pos_x, balls_to_the_walls.pos_y),)
-       // )?;
 
         let paddle_mesh = graphics::Mesh::new_rectangle(
             ctx,
