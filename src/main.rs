@@ -16,8 +16,8 @@ struct Ball {
     pos_x: f32,
     pos_y: f32,
     speed: f32,
-    dir_x: f32,
-    dir_y: f32,
+    dir_x: i8,
+    dir_y: i8,
     reached_bottom: bool,
 }
 
@@ -28,8 +28,8 @@ impl Ball {
             pos_x: x,
             pos_y: y,
             speed: 2.5,
-            dir_x: 1.0,
-            dir_y: 0.0,
+            dir_x: 0,
+            dir_y: 1,
             reached_bottom: false,
         }
     }
@@ -48,6 +48,14 @@ impl Ball {
             (self.pos_x + f32::from(self.image.width()) > paddle.pos_x &&
              self.pos_x + f32::from(self.image.width()) < paddle.pos_x + paddle.length ||
              self.pos_x > paddle.pos_x && self.pos_x < paddle.pos_x + paddle.length)
+    }
+
+    fn paddle_side_hit(&mut self, paddle: &Paddle) -> i8 {
+        if self.pos_x + f32::from(self.image.width() / 2) < paddle.pos_x + paddle.length / 2.0 {
+            -1
+        } else {
+            1
+        }
     }
 }
 
@@ -108,22 +116,20 @@ impl event::EventHandler for MainState {
             if ball.has_reached_bottom() {
                 ball.reached_bottom = true;
             } else if ball.has_reached_top() {
-                ball.dir_x = 1.0;
+                ball.dir_y = 1;
             } else if ball.hit_paddle(&self.paddle) {
-                ball.dir_x = -1.0;
+                ball.dir_x = ball.paddle_side_hit(&self.paddle);
+                ball.dir_y = -1;
             }
-
-            ball.pos_y = ball.pos_y % WINDOW_SIZE.1 + ball.speed * ball.dir_x;
-
-
+            ball.pos_x = ball.pos_x % WINDOW_SIZE.0 + ball.speed * f32::from(ball.dir_x);
+            ball.pos_y = ball.pos_y % WINDOW_SIZE.1 + ball.speed * f32::from(ball.dir_y);
         }
 
         if ggez::input::keyboard::is_key_pressed(ctx, KeyCode::Left) {
             if self.paddle.pos_x - self.paddle.speed >= 0.0 {
                 self.paddle.pos_x = self.paddle.pos_x % graphics::size(ctx).0 - self.paddle.speed;
             }
-        }
-        else if ggez::input::keyboard::is_key_pressed(ctx, KeyCode::Right) {
+        } else if ggez::input::keyboard::is_key_pressed(ctx, KeyCode::Right) {
             if self.paddle.pos_x + self.paddle.length + self.paddle.speed <= graphics::size(ctx).0 {
                 self.paddle.pos_x = self.paddle.pos_x % graphics::size(ctx).0 + self.paddle.speed;
             }
