@@ -33,27 +33,55 @@ impl Ball {
             reached_bottom: false,
         }
     }
+
+    fn has_reached_bottom(&mut self) -> bool {
+        self.pos_y + f32::from(self.image.height()) > WINDOW_SIZE.1
+    }
+
+    fn has_reached_top(&mut self) -> bool {
+        self.pos_y <= 0.0
+    }
+
+    fn hit_paddle(&mut self, paddle: &Paddle) -> bool {
+        self.pos_y + f32::from(self.image.height()) > paddle.pos_y &&
+            self.pos_y + f32::from(self.image.height()) < paddle.pos_y + paddle.height &&
+            (self.pos_x + f32::from(self.image.width()) > paddle.pos_x &&
+             self.pos_x + f32::from(self.image.width()) < paddle.pos_x + paddle.length ||
+             self.pos_x > paddle.pos_x && self.pos_x < paddle.pos_x + paddle.length)
+    }
+}
+
+struct Paddle {
+    pos_x: f32,
+    pos_y: f32,
+    speed: f32,
+    length: f32,
+    height: f32,
+    rec: graphics::Rect,
+}
+
+impl Paddle {
+    fn new(x: f32, y: f32) -> Paddle {
+        Paddle {
+            pos_x: x,
+            pos_y: y,
+            speed: 5.0,
+            length: 50.0,
+            height: 10.0,
+            rec: graphics::Rect::new(0.0, 0.0, 50.0, 10.0),
+        }
+    }
 }
 
 struct MainState {
-    paddle: graphics::Rect,
-    paddle_pos_x: f32,
-    paddle_pos_y: f32,
-    paddle_speed: f32,
-    paddle_length: f32,
-    paddle_height: f32,
+    paddle: Paddle,
     balls: Vec<Ball>,
 }
 
 impl MainState {
     fn new(ctx: &mut Context) -> GameResult<MainState> {
-        let paddle_speed = 5.0;
-        let paddle_length = 50.0;
-        let paddle_height = 10.0;
-        let paddle_pos_x = graphics::size(ctx).1 / 2.0 - paddle_length / 2.0;
-        let paddle_pos_y = graphics::size(ctx).1 - 50.0;
-
-        let paddle = graphics::Rect::new(0.0, 0.0, paddle_length, paddle_height);
+        // TODO: replace 25 by paddle length / 2
+        let paddle = Paddle::new(WINDOW_SIZE.0 / 2.0 - 25.0, WINDOW_SIZE.1 - 50.0);
 
         let balls = vec![
             Ball::new(ctx, 100.0, 100.0),
@@ -65,11 +93,6 @@ impl MainState {
 
         let s = MainState {
             paddle,
-            paddle_pos_x,
-            paddle_pos_y,
-            paddle_speed,
-            paddle_length,
-            paddle_height,
             balls,
         };
 
@@ -81,33 +104,28 @@ impl event::EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         self.balls.retain(|ball| !ball.reached_bottom);
 
-        for i in 0..self.balls.len() {
-            if self.balls[i].pos_y + f32::from(self.balls[i].image.height()) > WINDOW_SIZE.1 {
-                self.balls[i].reached_bottom = true;
-            } else if self.balls[i].pos_y <= 0.0 {
-                // Changes direction downwards
-                self.balls[i].dir_x = 1.0;
-            } else if self.balls[i].pos_y + f32::from(self.balls[i].image.height()) > self.paddle_pos_y &&
-                self.balls[i].pos_y + f32::from(self.balls[i].image.height()) < self.paddle_pos_y + self.paddle_height &&
-                (self.balls[i].pos_x + f32::from(self.balls[i].image.width()) > self.paddle_pos_x &&
-                 self.balls[i].pos_x + f32::from(self.balls[i].image.width()) < self.paddle_pos_x + self.paddle_length ||
-                 self.balls[i].pos_x > self.paddle_pos_x && self.balls[i].pos_x < self.paddle_pos_x + self.paddle_length) {
-                self.balls[i].dir_x = -1.0;
+        for ball in &mut self.balls {
+            if ball.has_reached_bottom() {
+                ball.reached_bottom = true;
+            } else if ball.has_reached_top() {
+                ball.dir_x = 1.0;
+            } else if ball.hit_paddle(&self.paddle) {
+                ball.dir_x = -1.0;
             }
 
-            self.balls[i].pos_y = self.balls[i].pos_y % graphics::size(ctx).1 + self.balls[i].speed * self.balls[i].dir_x;
+            ball.pos_y = ball.pos_y % WINDOW_SIZE.1 + ball.speed * ball.dir_x;
 
 
         }
 
         if ggez::input::keyboard::is_key_pressed(ctx, KeyCode::Left) {
-            if self.paddle_pos_x - self.paddle_speed >= 0.0 {
-                self.paddle_pos_x = self.paddle_pos_x % graphics::size(ctx).0 - self.paddle_speed;
+            if self.paddle.pos_x - self.paddle.speed >= 0.0 {
+                self.paddle.pos_x = self.paddle.pos_x % graphics::size(ctx).0 - self.paddle.speed;
             }
         }
         else if ggez::input::keyboard::is_key_pressed(ctx, KeyCode::Right) {
-            if self.paddle_pos_x + self.paddle_length + self.paddle_speed <= graphics::size(ctx).0 {
-                self.paddle_pos_x = self.paddle_pos_x % graphics::size(ctx).0 + self.paddle_speed;
+            if self.paddle.pos_x + self.paddle.length + self.paddle.speed <= graphics::size(ctx).0 {
+                self.paddle.pos_x = self.paddle.pos_x % graphics::size(ctx).0 + self.paddle.speed;
             }
         }
 
@@ -124,12 +142,12 @@ impl event::EventHandler for MainState {
         let paddle_mesh = graphics::Mesh::new_rectangle(
             ctx,
             graphics::DrawMode::fill(),
-            self.paddle,
+            self.paddle.rec,
             graphics::Color::new(1.0, 0.0, 0.0, 1.0),
         )?;
 
         graphics::draw(ctx, &paddle_mesh,
-                       (Point2::new(self.paddle_pos_x, self.paddle_pos_y),)
+                       (Point2::new(self.paddle.pos_x, self.paddle.pos_y),)
         )?;
 
         graphics::present(ctx)?;
