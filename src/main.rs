@@ -3,13 +3,14 @@ use ggez::event;
 use ggez::graphics;
 use ggez::nalgebra::Point2;
 use ggez::{Context, GameResult};
-use ggez::event::{KeyCode, KeyMods};
+use ggez::event::{KeyCode};
 
 use std::env;
 use std::path;
 use std::vec;
 
 const WINDOW_SIZE: (f32, f32) = (800.0, 800.0);
+const ENEMY_WIDTH: f32 = 40.0;
 
 struct Ball {
     image: graphics::Image,
@@ -97,9 +98,33 @@ impl Paddle {
     }
 }
 
+struct Enemy {
+    health: u8,
+    pos_x: f32,
+    pos_y: f32,
+    enemy_mesh: graphics::Mesh,
+}
+
+impl Enemy {
+    fn new(ctx: &mut Context, h: u8, x: f32, y: f32) -> Enemy {
+        Enemy {
+            health: h,
+            pos_x: x,
+            pos_y: y,
+            enemy_mesh: graphics::Mesh::new_rectangle(
+                ctx,
+                graphics::DrawMode::fill(),
+                graphics::Rect::new(0.0, 0.0, ENEMY_WIDTH, 10.0),
+                graphics::Color::new(0.0, 1.0, 0.0, 1.0),
+            ).unwrap(),
+        }
+    }
+}
+
 struct MainState {
     paddle: Paddle,
     balls: Vec<Ball>,
+    enemies: Vec<Enemy>,
 }
 
 impl MainState {
@@ -115,9 +140,20 @@ impl MainState {
             Ball::new(ctx, 500.0, 500.0),
         ];
 
+        let mut enemies = Vec::new();
+
+        for i in 1..5 {
+            let next_y_pos = 20.0 * i as f32;
+            for i in 1..15 {
+                let next_x_pos = (ENEMY_WIDTH + 10.0) * i as f32;
+                enemies.push(Enemy::new(ctx, 1, next_x_pos, next_y_pos));
+            }
+        }
+
         let s = MainState {
             paddle,
             balls,
+            enemies,
         };
 
         Ok(s)
@@ -163,6 +199,11 @@ impl event::EventHandler for MainState {
 
         for ball in &self.balls {
             graphics::draw(ctx, &ball.image, (Point2::new(ball.pos_x, ball.pos_y),))?;
+        }
+
+
+        for enemy in &self.enemies {
+            graphics::draw(ctx, &enemy.enemy_mesh, (Point2::new(enemy.pos_x, enemy.pos_y),))?;
         }
 
         let paddle_mesh = graphics::Mesh::new_rectangle(
