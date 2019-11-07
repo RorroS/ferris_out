@@ -102,7 +102,6 @@ struct Enemy {
     health: u8,
     pos_x: f32,
     pos_y: f32,
-    enemy_mesh: graphics::Mesh,
 }
 
 impl Enemy {
@@ -111,12 +110,6 @@ impl Enemy {
             health: h,
             pos_x: x,
             pos_y: y,
-            enemy_mesh: graphics::Mesh::new_rectangle(
-                ctx,
-                graphics::DrawMode::fill(),
-                graphics::Rect::new(0.0, 0.0, ENEMY_WIDTH, 10.0),
-                graphics::Color::new(0.0, 1.0, 0.0, 1.0),
-            ).unwrap(),
         }
     }
 }
@@ -125,6 +118,7 @@ struct MainState {
     paddle: Paddle,
     balls: Vec<Ball>,
     enemies: Vec<Enemy>,
+    sb: graphics::spritebatch::SpriteBatch,
 }
 
 impl MainState {
@@ -140,6 +134,9 @@ impl MainState {
             Ball::new(ctx, 500.0, 500.0),
         ];
 
+        let enemy_image = graphics::Image::new(ctx, "/enemy.png").unwrap();
+        let mut sb = graphics::spritebatch::SpriteBatch::new(enemy_image);
+
         let mut enemies = Vec::new();
 
         for i in 1..5 {
@@ -147,6 +144,10 @@ impl MainState {
             for i in 1..15 {
                 let next_x_pos = (ENEMY_WIDTH + 10.0) * i as f32;
                 enemies.push(Enemy::new(ctx, 1, next_x_pos, next_y_pos));
+
+                let p = graphics::DrawParam::new()
+                    .dest(Point2::new(next_x_pos, next_y_pos));
+                sb.add(p);
             }
         }
 
@@ -154,6 +155,7 @@ impl MainState {
             paddle,
             balls,
             enemies,
+            sb,
         };
 
         Ok(s)
@@ -201,10 +203,7 @@ impl event::EventHandler for MainState {
             graphics::draw(ctx, &ball.image, (Point2::new(ball.pos_x, ball.pos_y),))?;
         }
 
-
-        for enemy in &self.enemies {
-            graphics::draw(ctx, &enemy.enemy_mesh, (Point2::new(enemy.pos_x, enemy.pos_y),))?;
-        }
+        graphics::draw(ctx, &self.sb, graphics::DrawParam::new().dest(Point2::new(0.0, 0.0)))?;
 
         let paddle_mesh = graphics::Mesh::new_rectangle(
             ctx,
