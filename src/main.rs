@@ -4,6 +4,7 @@ use ggez::graphics;
 use ggez::nalgebra::Point2;
 use ggez::{Context, GameResult};
 use ggez::event::{KeyCode};
+use ggez::timer;
 
 use std::env;
 use std::path;
@@ -119,6 +120,7 @@ struct MainState {
     balls: Vec<Ball>,
     enemies: Vec<Enemy>,
     sb: graphics::spritebatch::SpriteBatch,
+    fps_text: graphics::Text,
 }
 
 impl MainState {
@@ -151,11 +153,14 @@ impl MainState {
             }
         }
 
+        let fps_text = graphics::Text::new("0");
+
         let s = MainState {
             paddle,
             balls,
             enemies,
             sb,
+            fps_text,
         };
 
         Ok(s)
@@ -193,6 +198,11 @@ impl event::EventHandler for MainState {
             }
         }
 
+        if timer::ticks(ctx) % 10 == 0 {
+            let fps = format!("{}", timer::fps(ctx).trunc());
+            self.fps_text = graphics::Text::new(fps);
+        }
+
         Ok(())
     }
 
@@ -215,6 +225,8 @@ impl event::EventHandler for MainState {
         graphics::draw(ctx, &paddle_mesh,
                        (Point2::new(self.paddle.pos_x, self.paddle.pos_y),)
         )?;
+
+        graphics::draw(ctx, &self.fps_text, (Point2::new(0.0, 0.0),))?;
 
         graphics::present(ctx)?;
         Ok(())
