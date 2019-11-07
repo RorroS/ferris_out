@@ -42,6 +42,14 @@ impl Ball {
         self.pos_y <= 0.0
     }
 
+    fn hit_right_wall(&mut self) -> bool {
+        self.pos_x <= 0.0
+    }
+
+    fn hit_left_wall(&mut self) -> bool {
+        self.pos_x + self.image.width() as f32 >= WINDOW_SIZE.0
+    }
+
     fn hit_paddle(&mut self, paddle: &Paddle) -> bool {
         self.pos_y + f32::from(self.image.height()) > paddle.pos_y &&
             self.pos_y + f32::from(self.image.height()) < paddle.pos_y + paddle.height &&
@@ -78,6 +86,14 @@ impl Paddle {
             height: 10.0,
             rec: graphics::Rect::new(0.0, 0.0, 50.0, 10.0),
         }
+    }
+
+    fn hit_left_wall(&mut self) -> bool {
+        self.pos_x - self.speed >= 0.0
+    }
+
+    fn hit_right_wall(&mut self) -> bool{
+        self.pos_x + self.length + self.speed <= WINDOW_SIZE.0
     }
 }
 
@@ -117,6 +133,10 @@ impl event::EventHandler for MainState {
                 ball.reached_bottom = true;
             } else if ball.has_reached_top() {
                 ball.dir_y = 1;
+            } else if ball.hit_right_wall() {
+                ball.dir_x = 1
+            } else if ball.hit_left_wall() {
+                ball.dir_x = -1
             } else if ball.hit_paddle(&self.paddle) {
                 ball.dir_x = ball.paddle_side_hit(&self.paddle);
                 ball.dir_y = -1;
@@ -126,11 +146,11 @@ impl event::EventHandler for MainState {
         }
 
         if ggez::input::keyboard::is_key_pressed(ctx, KeyCode::Left) {
-            if self.paddle.pos_x - self.paddle.speed >= 0.0 {
+            if self.paddle.hit_left_wall() {
                 self.paddle.pos_x = self.paddle.pos_x % graphics::size(ctx).0 - self.paddle.speed;
             }
         } else if ggez::input::keyboard::is_key_pressed(ctx, KeyCode::Right) {
-            if self.paddle.pos_x + self.paddle.length + self.paddle.speed <= graphics::size(ctx).0 {
+            if self.paddle.hit_right_wall() {
                 self.paddle.pos_x = self.paddle.pos_x % graphics::size(ctx).0 + self.paddle.speed;
             }
         }
