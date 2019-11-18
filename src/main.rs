@@ -12,6 +12,7 @@ use std::vec;
 
 const WINDOW_SIZE: (f32, f32) = (800.0, 800.0);
 const ENEMY_WIDTH: f32 = 40.0;
+const ENEMY_HEIGHT: f32 = 10.0;
 
 struct Ball {
     image: graphics::Image,
@@ -67,6 +68,29 @@ impl Ball {
             1
         }
     }
+
+    fn has_hit_enemy_bottom(&mut self, enemy: &mut Enemy) -> bool {
+        let ball_mid_x = self.pos_x + f32::from(self.image.width())/2.;
+
+        if enemy.pos_x <= ball_mid_x && enemy.pos_x + ENEMY_WIDTH >= ball_mid_x &&
+            enemy.pos_y + ENEMY_HEIGHT >= self.pos_y && enemy.pos_y <= self.pos_y {
+                true
+            } else {
+                false
+            }
+    }
+
+    fn has_hit_enemy_top(&mut self, enemy: &mut Enemy) -> bool {
+        let ball_mid_x = self.pos_x + f32::from(self.image.width())/2.;
+
+        if enemy.pos_x <= ball_mid_x && enemy.pos_x + ENEMY_WIDTH >= ball_mid_x &&
+            enemy.pos_y >= self.pos_y + f32::from(self.image.height()) &&
+            enemy.pos_y <= self.pos_y + f32::from(self.image.height()) {
+                true
+            } else {
+                false
+            }
+    }
 }
 
 struct Paddle {
@@ -97,6 +121,7 @@ impl Paddle {
     fn hit_right_wall(&mut self) -> bool{
         self.pos_x + self.length + self.speed <= WINDOW_SIZE.0
     }
+
 }
 
 struct Enemy {
@@ -106,7 +131,7 @@ struct Enemy {
 }
 
 impl Enemy {
-    fn new(ctx: &mut Context, h: u8, x: f32, y: f32) -> Enemy {
+    fn new(h: u8, x: f32, y: f32) -> Enemy {
         Enemy {
             health: h,
             pos_x: x,
@@ -119,7 +144,6 @@ struct MainState {
     paddle: Paddle,
     balls: Vec<Ball>,
     enemies: Vec<Enemy>,
-    sb: graphics::spritebatch::SpriteBatch,
     fps_text: graphics::Text,
 }
 
@@ -130,26 +154,19 @@ impl MainState {
 
         let balls = vec![
             Ball::new(ctx, 100.0, 100.0),
-            Ball::new(ctx, 200.0, 200.0),
-            Ball::new(ctx, 300.0, 300.0),
-            Ball::new(ctx, 400.0, 400.0),
-            Ball::new(ctx, 500.0, 500.0),
+            //Ball::new(ctx, 200.0, 200.0),
+            //Ball::new(ctx, 300.0, 300.0),
+            //Ball::new(ctx, 400.0, 400.0),
+            //Ball::new(ctx, 500.0, 500.0),
         ];
 
-        let enemy_image = graphics::Image::new(ctx, "/enemy.png").unwrap();
-        let mut sb = graphics::spritebatch::SpriteBatch::new(enemy_image);
+        let mut enemies = vec![];
 
-        let mut enemies = Vec::new();
-
-        for i in 1..5 {
-            let next_y_pos = 20.0 * i as f32;
+        for i in 1..2 {
+            let next_y_pos = 200.0 * i as f32;
             for i in 1..15 {
                 let next_x_pos = (ENEMY_WIDTH + 10.0) * i as f32;
-                enemies.push(Enemy::new(ctx, 1, next_x_pos, next_y_pos));
-
-                let p = graphics::DrawParam::new()
-                    .dest(Point2::new(next_x_pos, next_y_pos));
-                sb.add(p);
+                enemies.push(Enemy::new(1, next_x_pos, next_y_pos));
             }
         }
 
@@ -159,7 +176,6 @@ impl MainState {
             paddle,
             balls,
             enemies,
-            sb,
             fps_text,
         };
 
@@ -170,8 +186,19 @@ impl MainState {
 impl event::EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         self.balls.retain(|ball| !ball.reached_bottom);
+        self.enemies.retain(|enemy| enemy.health != 0);
 
         for ball in &mut self.balls {
+            for enemy in &mut self.enemies {
+                if ball.has_hit_enemy_bottom(enemy) && enemy.health > 0 {
+                    enemy.health -= 1;
+                    ball.dir_y = 1;
+                } else if ball.has_hit_enemy_top(enemy) && enemy.health > 0  {
+                    enemy.health -= 1;
+                    ball.dir_y = -1;
+                }
+            }
+
             if ball.has_reached_bottom() {
                 ball.reached_bottom = true;
             } else if ball.has_reached_top() {
@@ -187,6 +214,7 @@ impl event::EventHandler for MainState {
             ball.pos_x = ball.pos_x % WINDOW_SIZE.0 + ball.speed * f32::from(ball.dir_x);
             ball.pos_y = ball.pos_y % WINDOW_SIZE.1 + ball.speed * f32::from(ball.dir_y);
         }
+
 
         if ggez::input::keyboard::is_key_pressed(ctx, KeyCode::Left) {
             if self.paddle.hit_left_wall() {
@@ -209,11 +237,20 @@ impl event::EventHandler for MainState {
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
 
+        let enemy_image = graphics::Image::new(ctx, "/enemy.png").unwrap();
+        let mut sb = graphics::spritebatch::SpriteBatch::new(enemy_image);
+
         for ball in &self.balls {
             graphics::draw(ctx, &ball.image, (Point2::new(ball.pos_x, ball.pos_y),))?;
         }
 
-        graphics::draw(ctx, &self.sb, graphics::DrawParam::new().dest(Point2::new(0.0, 0.0)))?;
+        for enemy in &self.enemies {
+            let p = graphics::DrawParam::new()
+                .dest(Point2::new(enemy.pos_x, enemy.pos_y));
+            sb.add(p);
+        }
+
+        graphics::draw(ctx, &sb, graphics::DrawParam::new().dest(Point2::new(0.0, 0.0)))?;
 
         let paddle_mesh = graphics::Mesh::new_rectangle(
             ctx,
@@ -231,7 +268,6 @@ impl event::EventHandler for MainState {
         graphics::present(ctx)?;
         Ok(())
     }
-
 }
 
 pub fn main() -> GameResult {
@@ -244,7 +280,7 @@ pub fn main() -> GameResult {
     };
 
     let (ctx, event_loop) = &mut ggez::ContextBuilder::new("Ferris out", "Robin")
-        .window_setup(ggez::conf::WindowSetup::default().title("Ferris out"))
+        .window_setup(ggez::conf::WindowSetup::default().title("Ferris out").icon("/ballis.png"))
         .window_mode(ggez::conf::WindowMode::default().dimensions(WINDOW_SIZE.0, WINDOW_SIZE.1))
         .add_resource_path(resource_dir)
         .build()?;
