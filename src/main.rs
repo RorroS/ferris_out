@@ -91,6 +91,38 @@ impl Ball {
                 false
             }
     }
+
+    fn has_hit_enemy_left(&mut self, enemy: &mut Enemy) -> bool {
+        if self.pos_x < enemy.pos_x &&
+            self.pos_x + f32::from(self.image.width()) >= enemy.pos_x &&
+            ((self.pos_y >= enemy.pos_y &&
+              self.pos_y <= enemy.pos_y + ENEMY_HEIGHT) ||
+             (self.pos_y + f32::from(self.image.height()) >= enemy.pos_y &&
+              self.pos_y + f32::from(self.image.height()) <= enemy.pos_y + ENEMY_HEIGHT) ||
+             (self.pos_y <= enemy.pos_y &&
+              self.pos_y + f32::from(self.image.height()) > enemy.pos_y + ENEMY_HEIGHT))
+        {
+            true
+        } else {
+            false
+        }
+    }
+
+    fn has_hit_enemy_right(&mut self, enemy: &mut Enemy) -> bool {
+        if self.pos_x + f32::from(self.image.width()) > enemy.pos_x + ENEMY_WIDTH &&
+            self.pos_x <= enemy.pos_x + ENEMY_WIDTH &&
+            ((self.pos_y >= enemy.pos_y &&
+              self.pos_y <= enemy.pos_y + ENEMY_HEIGHT) ||
+             (self.pos_y + f32::from(self.image.height()) >= enemy.pos_y &&
+              self.pos_y + f32::from(self.image.height()) <= enemy.pos_y + ENEMY_HEIGHT) ||
+             (self.pos_y <= enemy.pos_y &&
+              self.pos_y + f32::from(self.image.height()) > enemy.pos_y + ENEMY_HEIGHT))
+        {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 struct Paddle {
@@ -121,7 +153,6 @@ impl Paddle {
     fn hit_right_wall(&mut self) -> bool{
         self.pos_x + self.length + self.speed <= WINDOW_SIZE.0
     }
-
 }
 
 struct Enemy {
@@ -162,8 +193,8 @@ impl MainState {
 
         let mut enemies = vec![];
 
-        for i in 1..2 {
-            let next_y_pos = 200.0 * i as f32;
+        for i in 1..5 {
+            let next_y_pos = 20.0 * i as f32;
             for i in 1..15 {
                 let next_x_pos = (ENEMY_WIDTH + 10.0) * i as f32;
                 enemies.push(Enemy::new(1, next_x_pos, next_y_pos));
@@ -190,12 +221,18 @@ impl event::EventHandler for MainState {
 
         for ball in &mut self.balls {
             for enemy in &mut self.enemies {
-                if ball.has_hit_enemy_bottom(enemy) && enemy.health > 0 {
+                if ball.has_hit_enemy_bottom(enemy) {
                     enemy.health -= 1;
                     ball.dir_y = 1;
-                } else if ball.has_hit_enemy_top(enemy) && enemy.health > 0  {
+                } else if ball.has_hit_enemy_top(enemy) {
                     enemy.health -= 1;
                     ball.dir_y = -1;
+                } else if ball.has_hit_enemy_left(enemy) {
+                    enemy.health -= 1;
+                    ball.dir_x = -1;
+                } else if ball.has_hit_enemy_right(enemy) {
+                    enemy.health -= 1;
+                    ball.dir_x = 1;
                 }
             }
 
