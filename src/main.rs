@@ -22,6 +22,7 @@ struct Ball {
     dir_x: i8,
     dir_y: i8,
     reached_bottom: bool,
+    in_game: bool,
 }
 
 impl Ball {
@@ -34,6 +35,7 @@ impl Ball {
             dir_x: 0,
             dir_y: 1,
             reached_bottom: false,
+            in_game: false,
         }
     }
 
@@ -184,11 +186,7 @@ impl MainState {
         let paddle = Paddle::new(WINDOW_SIZE.0 / 2.0 - 25.0, WINDOW_SIZE.1 - 50.0);
 
         let balls = vec![
-            Ball::new(ctx, 100.0, 100.0),
-            //Ball::new(ctx, 200.0, 200.0),
-            //Ball::new(ctx, 300.0, 300.0),
-            //Ball::new(ctx, 400.0, 400.0),
-            //Ball::new(ctx, 500.0, 500.0),
+            Ball::new(ctx, paddle.pos_x, paddle.pos_y - 30.),
         ];
 
         let mut enemies = vec![];
@@ -220,36 +218,42 @@ impl event::EventHandler for MainState {
         self.enemies.retain(|enemy| enemy.health != 0);
 
         for ball in &mut self.balls {
-            for enemy in &mut self.enemies {
-                if ball.has_hit_enemy_bottom(enemy) {
-                    enemy.health -= 1;
-                    ball.dir_y = 1;
-                } else if ball.has_hit_enemy_top(enemy) {
-                    enemy.health -= 1;
-                    ball.dir_y = -1;
-                } else if ball.has_hit_enemy_left(enemy) {
-                    enemy.health -= 1;
-                    ball.dir_x = -1;
-                } else if ball.has_hit_enemy_right(enemy) {
-                    enemy.health -= 1;
-                    ball.dir_x = 1;
+            if ball.in_game {
+                for enemy in &mut self.enemies {
+                    if ball.has_hit_enemy_bottom(enemy) {
+                        enemy.health -= 1;
+                        ball.dir_y = 1;
+                    } else if ball.has_hit_enemy_top(enemy) {
+                        enemy.health -= 1;
+                        ball.dir_y = -1;
+                    } else if ball.has_hit_enemy_left(enemy) {
+                        enemy.health -= 1;
+                        ball.dir_x = -1;
+                    } else if ball.has_hit_enemy_right(enemy) {
+                        enemy.health -= 1;
+                        ball.dir_x = 1;
+                    }
                 }
+
+                if ball.has_reached_bottom() {
+                    ball.reached_bottom = true;
+                } else if ball.has_reached_top() {
+                    ball.dir_y = 1;
+                } else if ball.hit_right_wall() {
+                    ball.dir_x = 1
+                } else if ball.hit_left_wall() {
+                    ball.dir_x = -1
+                } else if ball.hit_paddle(&self.paddle) {
+                    ball.dir_x = ball.paddle_side_hit(&self.paddle);
+                    ball.dir_y = -1;
+                }
+
+                ball.pos_x = ball.pos_x % WINDOW_SIZE.0 + ball.speed * f32::from(ball.dir_x);
+                ball.pos_y = ball.pos_y % WINDOW_SIZE.1 + ball.speed * f32::from(ball.dir_y);
+            } else {
+                ball.pos_x = self.paddle.pos_x + self.paddle.length/2. - f32::from(ball.image.width())/2.;
             }
 
-            if ball.has_reached_bottom() {
-                ball.reached_bottom = true;
-            } else if ball.has_reached_top() {
-                ball.dir_y = 1;
-            } else if ball.hit_right_wall() {
-                ball.dir_x = 1
-            } else if ball.hit_left_wall() {
-                ball.dir_x = -1
-            } else if ball.hit_paddle(&self.paddle) {
-                ball.dir_x = ball.paddle_side_hit(&self.paddle);
-                ball.dir_y = -1;
-            }
-            ball.pos_x = ball.pos_x % WINDOW_SIZE.0 + ball.speed * f32::from(ball.dir_x);
-            ball.pos_y = ball.pos_y % WINDOW_SIZE.1 + ball.speed * f32::from(ball.dir_y);
         }
 
 
@@ -260,6 +264,13 @@ impl event::EventHandler for MainState {
         } else if ggez::input::keyboard::is_key_pressed(ctx, KeyCode::Right) {
             if self.paddle.hit_right_wall() {
                 self.paddle.pos_x = self.paddle.pos_x % graphics::size(ctx).0 + self.paddle.speed;
+            }
+        } else if ggez::input::keyboard::is_key_pressed(ctx, KeyCode::Space) {
+            for ball in &mut self.balls {
+                if !ball.in_game {
+                    ball.dir_y = -1;
+                    ball.in_game = true;
+                }
             }
         }
 
